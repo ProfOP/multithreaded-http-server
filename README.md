@@ -20,31 +20,49 @@ The project focuses on concurrency, robustness, graceful shutdown, and performan
 
 ## 🧠 Architecture Overview
 
-            +----------------------+
-            |      Main Thread     |
-            |----------------------|
-            | socket() / bind()    |
-            | listen()             |
-            | accept()             |
-            +----------+-----------+
-                       |
-                       v
-            +----------------------+
-            |     Task Queue       |
-            | (mutex + cond var)   |
-            +----------+-----------+
-                       |
-     +-----------------+-----------------+
-     |                 |                 |
-     v                 v                 v
-+----------------+ +----------------+ +----------------+
-| Worker Thread | | Worker Thread | | Worker Thread |
-| handle_client | | handle_client | | handle_client |
-+----------------+ +----------------+ +----------------+
-|
-v
-HTTP parsing → file lookup → response write
-
+Clients
+(Browser / curl / ab)
+        │
+        ▼
++----------------------+
+|  TCP Listening Socket|
+|  (socket / bind /    |
+|   listen)            |
++----------+-----------+
+           │
+           ▼
++----------------------+
+|     Main Thread      |
+|----------------------|
+| accept() connections |
+| enqueue tasks        |
++----------+-----------+
+           │
+           ▼
++----------------------+
+|      Task Queue      |
+|  (mutex + condition) |
++----------+-----------+
+           │
+   ┌───────┴────────┐
+   ▼                ▼
++----------+   +----------+
+| Worker   |   | Worker   |
+| Thread   |   | Thread   |
++----------+   +----------+
+     │              │
+     └──────┬───────┘
+            ▼
++-----------------------------+
+|   Request Processing        |
+|-----------------------------|
+| • Read & validate request   |
+| • Enforce GET-only policy   |
+| • Prevent path traversal   |
+| • Read file from web root  |
+| • Build HTTP response      |
+| • Log request safely       |
++-----------------------------+
 
 
 ---
